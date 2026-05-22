@@ -1,8 +1,8 @@
-﻿package com.example.fintrack.core.util
+package com.example.fintrack.core.util
 
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.native.NativeSqliteDriver
-import com.example.fintrack.data.local.NoteDatabase
+import com.example.fintrack.data.local.FinTrackDatabase
 
 /**
  * iOS implementation of DatabaseDriverFactory
@@ -13,7 +13,7 @@ import com.example.fintrack.data.local.NoteDatabase
 actual class DatabaseDriverFactory {
     actual fun createDriver(): SqlDriver {
         return NativeSqliteDriver(
-            schema = NoteDatabase.Schema,
+            schema = FinTrackDatabase.Schema,
             name = "FinTrack.db"
         )
     }

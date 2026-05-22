@@ -1,4 +1,4 @@
-﻿import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -152,7 +152,7 @@ android {
 
 sqldelight {
     databases {
-        create("NoteDatabase") {
+        create("FinTrackDatabase") {
             packageName.set("com.example.fintrack.data.local")
         }
     }

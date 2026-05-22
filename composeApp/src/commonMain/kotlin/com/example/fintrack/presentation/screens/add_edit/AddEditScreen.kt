@@ -25,6 +25,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fintrack.presentation.theme.*
+import com.example.fintrack.domain.model.TransactionType
+import org.koin.compose.viewmodel.koinViewModel
 
 // ==================== ADD / EDIT SCREEN ====================
 
@@ -32,14 +34,20 @@ import com.example.fintrack.presentation.theme.*
 @Composable
 fun AddEditScreen(
     transactionId: Long?,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: AddEditViewModel = koinViewModel()
 ) {
     val isEditing = transactionId != null
-    var selectedTab by remember { mutableStateOf(0) } // 0 = Expense, 1 = Income
-    var amount by remember { mutableStateOf("") }
-    var title by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
+    val state by viewModel.uiState.collectAsState()
+    
+    // Init data when editing
+    LaunchedEffect(transactionId) {
+        if (transactionId != null) {
+            viewModel.loadTransaction(transactionId)
+        }
+    }
+
+    val selectedTab = if (state.type == TransactionType.EXPENSE) 0 else 1
 
     Scaffold(
         containerColor = DarkBackground,
@@ -61,31 +69,38 @@ fun AddEditScreen(
             // Expense / Income toggle
             TransactionTypeToggle(
                 selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
+                onTabSelected = { 
+                    viewModel.onEvent(AddEditEvent.TypeChanged(if (it == 0) TransactionType.EXPENSE else TransactionType.INCOME))
+                }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Amount display
-            AmountDisplay(amount = amount)
+            AmountDisplay(amount = state.amount)
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Form fields
             TransactionForm(
-                title = title,
-                onTitleChange = { title = it },
-                category = category,
-                date = date,
-                amount = amount,
-                onAmountChange = { amount = it }
+                title = state.title,
+                onTitleChange = { viewModel.onEvent(AddEditEvent.TitleChanged(it)) },
+                category = state.category,
+                onCategoryChange = { viewModel.onEvent(AddEditEvent.CategoryChanged(it)) },
+                date = "Now", // Simplified for now
+                amount = state.amount,
+                onAmountChange = { viewModel.onEvent(AddEditEvent.AmountChanged(it)) },
+                currency = state.currency,
+                onCurrencyChange = { viewModel.onEvent(AddEditEvent.CurrencyChanged(it)) }
             )
 
             Spacer(modifier = Modifier.weight(1f))
 
             // Save button
             Button(
-                onClick = onNavigateBack,
+                onClick = {
+                    viewModel.onEvent(AddEditEvent.SaveTransaction(onSuccess = onNavigateBack))
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 16.dp),
@@ -180,22 +195,25 @@ private fun AmountDisplay(amount: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Text(
-                "$",
-                style = MaterialTheme.typography.headlineMedium,
-                color = TextGray
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                if (amount.isEmpty()) "0.00" else amount,
-                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 48.sp),
-                color = if (amount.isEmpty()) TextMuted else TextWhite,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        // Quick amount editor
+        OutlinedTextField(
+            value = amount,
+            onValueChange = { /* We edit in form below instead */ },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
+            textStyle = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, textAlign = TextAlign.Center),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                cursorColor = FinTrackGreen,
+                focusedTextColor = TextWhite,
+                unfocusedTextColor = TextMuted
+            ),
+            placeholder = { Text("0.00", style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp), color = TextMuted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            readOnly = true
+        )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             "Tap to edit amount",
@@ -212,9 +230,12 @@ private fun TransactionForm(
     title: String,
     onTitleChange: (String) -> Unit,
     category: String,
+    onCategoryChange: (String) -> Unit,
     date: String,
     amount: String,
-    onAmountChange: (String) -> Unit
+    onAmountChange: (String) -> Unit,
+    currency: String,
+    onCurrencyChange: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -222,6 +243,62 @@ private fun TransactionForm(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Currency Selector
+        Text("Currency", style = MaterialTheme.typography.labelMedium, color = TextGray)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            val currencies = listOf("USD" to "Dollar ($)", "IDR" to "Rupiah (Rp)")
+            currencies.forEach { (code, label) ->
+                val isSelected = currency == code
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onCurrencyChange(code) },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isSelected) FinTrackGreen.copy(alpha = 0.15f) else DarkCard,
+                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                            if (isSelected) listOf(FinTrackGreen, FinTrackGreen)
+                            else listOf(DarkSurfaceVariant, DarkSurfaceVariant)
+                        )
+                    )
+                ) {
+                    Text(
+                        label,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isSelected) FinTrackGreen else TextGray,
+                        textAlign = TextAlign.Center,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+
+        // Amount field (Moved here for easier input)
+        Text("Amount", style = MaterialTheme.typography.labelMedium, color = TextGray)
+        OutlinedTextField(
+            value = amount,
+            onValueChange = onAmountChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("0.00", color = TextMuted) },
+            leadingIcon = { Text(if (currency == "USD") "$" else "Rp", color = TextGray, modifier = Modifier.padding(start = 16.dp, end = 8.dp)) },
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = FinTrackGreen,
+                unfocusedBorderColor = DarkSurfaceVariant,
+                focusedContainerColor = DarkCard,
+                unfocusedContainerColor = DarkCard,
+                cursorColor = FinTrackGreen,
+                focusedTextColor = TextWhite,
+                unfocusedTextColor = TextWhite
+            ),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true
+        )
+
         // Title field
         Text("Title", style = MaterialTheme.typography.labelMedium, color = TextGray)
         OutlinedTextField(
@@ -250,8 +327,8 @@ private fun TransactionForm(
         // Category field
         Text("Category", style = MaterialTheme.typography.labelMedium, color = TextGray)
         OutlinedTextField(
-            value = if (category.isEmpty()) "" else category,
-            onValueChange = {},
+            value = category,
+            onValueChange = onCategoryChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text("Select a category", color = TextMuted)
@@ -272,7 +349,6 @@ private fun TransactionForm(
                 focusedTextColor = TextWhite,
                 unfocusedTextColor = TextWhite
             ),
-            readOnly = true,
             singleLine = true
         )
 

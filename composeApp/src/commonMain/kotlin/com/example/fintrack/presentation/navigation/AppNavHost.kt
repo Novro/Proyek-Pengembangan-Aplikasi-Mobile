@@ -9,6 +9,7 @@ import com.example.fintrack.presentation.screens.home.HomeScreen
 import com.example.fintrack.presentation.screens.detail.DetailScreen
 import com.example.fintrack.presentation.screens.add_edit.AddEditScreen
 import com.example.fintrack.presentation.screens.exchange.ExchangeScreen
+import com.example.fintrack.presentation.screens.history.HistoryScreen
 
 @Composable
 fun AppNavHost(navController: NavHostController) {
@@ -26,6 +27,9 @@ fun AppNavHost(navController: NavHostController) {
                 },
                 onNavigateToExchange = {
                     navController.navigate(Screen.Exchange)
+                },
+                onNavigateToHistory = {
+                    navController.navigate(Screen.History)
                 }
             )
         }
@@ -59,6 +63,25 @@ fun AppNavHost(navController: NavHostController) {
         composable<Screen.Exchange> {
             ExchangeScreen(
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable<Screen.History> {
+            HistoryScreen(
+                onNavigateToDetail = { id ->
+                    navController.navigate(Screen.DetailTransaction(id))
+                },
+                onNavigateToAdd = {
+                    navController.navigate(Screen.AddTransaction)
+                },
+                onNavigateToDashboard = {
+                    navController.navigate(Screen.Home) {
+                        popUpTo(Screen.Home) { inclusive = true }
+                    }
+                },
+                onNavigateToExchange = {
+                    navController.navigate(Screen.Exchange)
+                }
             )
         }
     }

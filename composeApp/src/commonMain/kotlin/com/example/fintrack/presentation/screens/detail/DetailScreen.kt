@@ -8,10 +8,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +23,58 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.fintrack.domain.model.Transaction
+import com.example.fintrack.domain.model.TransactionType
 import com.example.fintrack.presentation.theme.*
+import org.koin.compose.viewmodel.koinViewModel
+import kotlin.math.roundToLong
+
+// Helper for formatting currencies
+private fun formatAmount(amount: Double, currency: String): String {
+    val isNegative = amount < 0
+    val absAmount = if (isNegative) -amount else amount
+    val formatted = if (currency == "USD") {
+        val rounded = (absAmount * 100).roundToLong() / 100.0
+        val str = rounded.toString()
+        val parts = str.split(".")
+        val whole = parts[0]
+        val decimal = if (parts.size > 1) parts[1].padEnd(2, '0').take(2) else "00"
+        "$$whole.$decimal"
+    } else {
+        val rounded = absAmount.roundToLong()
+        "Rp $rounded"
+    }
+    return if (isNegative) "-$formatted" else formatted
+}
+
+// Helper for formatting instants
+private fun formatInstant(instant: kotlinx.datetime.Instant): String {
+    val isoStr = instant.toString() // e.g. "2023-10-24T15:30:00Z"
+    if (isoStr.length >= 10) {
+        val parts = isoStr.substring(0, 10).split("-")
+        if (parts.size == 3) {
+            val year = parts[0]
+            val month = when (parts[1]) {
+                "01" -> "Jan"
+                "02" -> "Feb"
+                "03" -> "Mar"
+                "04" -> "Apr"
+                "05" -> "May"
+                "06" -> "Jun"
+                "07" -> "Jul"
+                "08" -> "Aug"
+                "09" -> "Sep"
+                "10" -> "Oct"
+                "11" -> "Nov"
+                "12" -> "Dec"
+                else -> parts[1]
+            }
+            val day = parts[2]
+            return "$month $day, $year"
+        }
+    }
+    return isoStr
+}
 
 // ==================== DETAIL SCREEN ====================
 
@@ -30,49 +83,87 @@ import com.example.fintrack.presentation.theme.*
 fun DetailScreen(
     transactionId: Long,
     onNavigateToEdit: (Long) -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    viewModel: DetailViewModel = koinViewModel()
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+    val state by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(transactionId) {
+        viewModel.loadTransaction(transactionId)
+    }
 
     Scaffold(
         containerColor = DarkBackground,
         topBar = { DetailTopBar() },
         bottomBar = {
-            DetailBottomActions(
-                onDelete = { showDeleteDialog = true },
-                onEdit = { onNavigateToEdit(transactionId) }
-            )
+            if (state is DetailState.Success) {
+                DetailBottomActions(
+                    onDelete = { showDeleteDialog = true },
+                    onEdit = { onNavigateToEdit(transactionId) }
+                )
+            }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            // Back link
-            Text(
-                "← Back to Transactions",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextGray,
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clickable { onNavigateBack() }
-            )
+            when (val currentState = state) {
+                is DetailState.Loading -> {
+                    CircularProgressIndicator(color = FinTrackGreen)
+                }
+                is DetailState.Error -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(currentState.message, color = ErrorRed, style = MaterialTheme.typography.bodyLarge)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onNavigateBack, colors = ButtonDefaults.buttonColors(containerColor = FinTrackGreen)) {
+                            Text("Go Back")
+                        }
+                    }
+                }
+                is DetailState.Success -> {
+                    val transaction = currentState.transaction
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        // Back link
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .clickable { onNavigateBack() },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextGray, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Back to Transactions",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextGray
+                            )
+                        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-            // Transaction header card
-            TransactionHeaderCard()
+                        // Transaction header card
+                        TransactionHeaderCard(transaction = transaction)
 
-            Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-            // Transaction details
-            TransactionDetailsSection()
+                        // Transaction details
+                        TransactionDetailsSection(transaction = transaction)
+                    }
+                }
+            }
         }
 
         // Delete confirmation dialog
-        if (showDeleteDialog) {
+        if (showDeleteDialog && state is DetailState.Success) {
+            val transaction = (state as DetailState.Success).transaction
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 containerColor = DarkCard,
@@ -82,7 +173,7 @@ fun DetailScreen(
                     TextButton(
                         onClick = {
                             showDeleteDialog = false
-                            onNavigateBack()
+                            viewModel.deleteTransaction(transaction.id, onSuccess = onNavigateBack)
                         }
                     ) {
                         Text("Confirm", color = ErrorRed)
@@ -133,7 +224,7 @@ private fun DetailTopBar() {
 // ==================== TRANSACTION HEADER CARD ====================
 
 @Composable
-private fun TransactionHeaderCard() {
+private fun TransactionHeaderCard(transaction: Transaction) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -156,9 +247,9 @@ private fun TransactionHeaderCard() {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.Restaurant,
-                    contentDescription = "Food",
-                    tint = FinTrackGreen,
+                    if (transaction.type == TransactionType.INCOME) Icons.Default.TrendingUp else Icons.Default.Restaurant,
+                    contentDescription = transaction.category,
+                    tint = if (transaction.type == TransactionType.INCOME) FinTrackGreen else ErrorRed,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -166,7 +257,7 @@ private fun TransactionHeaderCard() {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                "Weekly Groceries",
+                transaction.title,
                 style = MaterialTheme.typography.titleLarge,
                 color = TextWhite,
                 fontWeight = FontWeight.Bold
@@ -174,10 +265,12 @@ private fun TransactionHeaderCard() {
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            val prefix = if (transaction.type == TransactionType.INCOME) "+" else "-"
+            val formatted = formatAmount(transaction.amount, transaction.currency)
             Text(
-                "$250.00",
+                "$prefix$formatted",
                 style = MaterialTheme.typography.headlineLarge,
-                color = TextWhite,
+                color = if (transaction.type == TransactionType.INCOME) FinTrackGreen else TextWhite,
                 fontWeight = FontWeight.Bold,
                 fontSize = 36.sp
             )
@@ -187,13 +280,13 @@ private fun TransactionHeaderCard() {
             // Status badge
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = SuccessGreenBg
+                color = if (transaction.type == TransactionType.INCOME) SuccessGreenBg else DarkSurfaceVariant
             ) {
                 Text(
-                    "Cleared",
+                    if (transaction.type == TransactionType.INCOME) "Received" else "Spent",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelMedium,
-                    color = SuccessGreen
+                    color = if (transaction.type == TransactionType.INCOME) SuccessGreen else TextGray
                 )
             }
         }
@@ -203,10 +296,10 @@ private fun TransactionHeaderCard() {
 // ==================== TRANSACTION DETAILS ====================
 
 @Composable
-private fun TransactionDetailsSection() {
+private fun TransactionDetailsSection(transaction: Transaction) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         // Date
-        DetailRow(label = "Date", value = "Oct 24, 2023")
+        DetailRow(label = "Date", value = formatInstant(transaction.date))
 
         HorizontalDivider(
             modifier = Modifier.padding(vertical = 16.dp),
@@ -226,10 +319,10 @@ private fun TransactionDetailsSection() {
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(FinTrackGreen)
+                        .background(if (transaction.type == TransactionType.INCOME) FinTrackGreen else ErrorRed)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Food", style = MaterialTheme.typography.bodyLarge, color = TextWhite, fontWeight = FontWeight.Medium)
+                Text(transaction.category, style = MaterialTheme.typography.bodyLarge, color = TextWhite, fontWeight = FontWeight.Medium)
             }
         }
 
@@ -239,15 +332,15 @@ private fun TransactionDetailsSection() {
             thickness = 1.dp
         )
 
-        // Note
-        Text("Note", style = MaterialTheme.typography.bodyMedium, color = TextGray)
+        // Transaction note/info
+        Text("Transaction Type", style = MaterialTheme.typography.bodyMedium, color = TextGray)
         Spacer(modifier = Modifier.height(12.dp))
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = DarkCard)
         ) {
             Text(
-                "Stocked up on essentials for the week. Included some specialty items for the dinner party on Saturday.",
+                "This is an ${transaction.type.name.lowercase()} transaction of ${formatAmount(transaction.amount, transaction.currency)} categorized under '${transaction.category}'.",
                 modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextGray,

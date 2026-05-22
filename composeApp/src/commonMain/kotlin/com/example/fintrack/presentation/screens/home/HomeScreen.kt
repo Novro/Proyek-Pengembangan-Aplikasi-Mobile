@@ -27,6 +27,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fintrack.presentation.theme.*
+import com.example.fintrack.domain.model.Transaction
+import com.example.fintrack.domain.model.TransactionType
+import org.koin.compose.viewmodel.koinViewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import kotlin.math.roundToLong
+
+// Helper for formatting currencies
+private fun formatAmount(amount: Double, currency: String): String {
+    val isNegative = amount < 0
+    val absAmount = if (isNegative) -amount else amount
+    val formatted = if (currency == "USD") {
+        val rounded = (absAmount * 100).roundToLong() / 100.0
+        val str = rounded.toString()
+        val parts = str.split(".")
+        val whole = parts[0]
+        val decimal = if (parts.size > 1) parts[1].padEnd(2, '0').take(2) else "00"
+        "$$whole.$decimal"
+    } else {
+        val rounded = absAmount.roundToLong()
+        "Rp $rounded"
+    }
+    return if (isNegative) "-$formatted" else formatted
+}
 
 // ==================== HOME SCREEN ====================
 
@@ -35,12 +60,23 @@ import com.example.fintrack.presentation.theme.*
 fun HomeScreen(
     onNavigateToDetail: (Long) -> Unit,
     onNavigateToAdd: () -> Unit,
-    onNavigateToExchange: () -> Unit = {}
+    onNavigateToExchange: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {},
+    viewModel: HomeViewModel = koinViewModel()
 ) {
+    val recentTransactions by viewModel.recentTransactions.collectAsState()
+    val totalBalance by viewModel.totalBalance.collectAsState()
+    val displayCurrency by viewModel.displayCurrency.collectAsState()
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = { FinTrackTopBar() },
-        bottomBar = { FinTrackBottomBar(onNavigateToExchange = onNavigateToExchange) },
+        bottomBar = {
+            FinTrackBottomBar(
+                onNavigateToExchange = onNavigateToExchange,
+                onNavigateToHistory = onNavigateToHistory
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onNavigateToAdd,
@@ -58,11 +94,20 @@ fun HomeScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            BalanceCard()
+            BalanceCard(
+                balance = totalBalance,
+                currency = displayCurrency,
+                onToggleCurrency = { viewModel.toggleDisplayCurrency() }
+            )
             Spacer(modifier = Modifier.height(16.dp))
             MonthlyOverviewRow()
             Spacer(modifier = Modifier.height(24.dp))
-            RecentTransactionsSection(onNavigateToDetail = onNavigateToDetail, onNavigateToAdd = onNavigateToAdd)
+            RecentTransactionsSection(
+                transactions = recentTransactions,
+                onNavigateToDetail = onNavigateToDetail,
+                onNavigateToAdd = onNavigateToAdd,
+                onViewAllClick = onNavigateToHistory
+            )
         }
     }
 }
@@ -115,7 +160,11 @@ private fun FinTrackTopBar() {
 // ==================== BALANCE CARD ====================
 
 @Composable
-private fun BalanceCard() {
+private fun BalanceCard(
+    balance: Double = 0.0,
+    currency: String = "USD",
+    onToggleCurrency: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,47 +195,38 @@ private fun BalanceCard() {
                         color = Color.White.copy(alpha = 0.7f),
                         letterSpacing = 1.5.sp
                     )
-                    Icon(
-                        Icons.Default.TrendingUp,
-                        contentDescription = null,
-                        tint = FinTrackGreenLight,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    // Toggle currency pill
+                    Surface(
+                        modifier = Modifier.clickable { onToggleCurrency() },
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.White.copy(alpha = 0.2f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = if (currency == "USD") "USD ⇆ IDR" else "IDR ⇆ USD",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val formatted = remember(balance, currency) {
+                        formatAmount(balance, currency)
+                    }
                     Text(
-                        "$1,250.00",
+                        formatted,
                         style = MaterialTheme.typography.headlineLarge,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = SuccessGreen.copy(alpha = 0.2f)
-                    ) {
-                        Text(
-                            "↑ 2.4%",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = SuccessGreen
-                        )
-                    }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "≈ Rp 19,250,000",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.6f)
-                )
-                Text(
-                    "Updated just now",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.4f)
-                )
-
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -299,8 +339,10 @@ private fun MonthlyCard(
 
 @Composable
 private fun RecentTransactionsSection(
+    transactions: List<Transaction>,
     onNavigateToDetail: (Long) -> Unit,
-    onNavigateToAdd: () -> Unit
+    onNavigateToAdd: () -> Unit,
+    onViewAllClick: () -> Unit = {}
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(
@@ -318,13 +360,71 @@ private fun RecentTransactionsSection(
                 "View All >",
                 style = MaterialTheme.typography.labelMedium,
                 color = FinTrackGreen,
-                modifier = Modifier.clickable { }
+                modifier = Modifier.clickable { onViewAllClick() }
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Empty state
-        EmptyTransactionsState(onAddClick = onNavigateToAdd)
+        if (transactions.isEmpty()) {
+            // Empty state
+            EmptyTransactionsState(onAddClick = onNavigateToAdd)
+        } else {
+            transactions.forEach { transaction ->
+                TransactionItem(transaction = transaction, onClick = { onNavigateToDetail(transaction.id) })
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransactionItem(transaction: Transaction, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(DarkCard)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(DarkSurfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (transaction.type == TransactionType.INCOME) Icons.Default.TrendingUp else Icons.Default.Receipt,
+                contentDescription = null,
+                tint = if (transaction.type == TransactionType.INCOME) FinTrackGreen else Color.White
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                transaction.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextWhite,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                transaction.category,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextGray
+            )
+        }
+        val prefix = if (transaction.type == TransactionType.INCOME) "+" else "-"
+        val formattedAmount = remember(transaction.amount, transaction.currency) {
+            formatAmount(transaction.amount, transaction.currency)
+        }
+        Text(
+            "$prefix$formattedAmount",
+            style = MaterialTheme.typography.titleMedium,
+            color = if (transaction.type == TransactionType.INCOME) FinTrackGreen else TextWhite,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
@@ -403,7 +503,10 @@ private fun EmptyTransactionsState(onAddClick: () -> Unit) {
 // ==================== BOTTOM NAVIGATION ====================
 
 @Composable
-private fun FinTrackBottomBar(onNavigateToExchange: () -> Unit) {
+private fun FinTrackBottomBar(
+    onNavigateToExchange: () -> Unit,
+    onNavigateToHistory: () -> Unit
+) {
     NavigationBar(
         containerColor = DarkSurface,
         contentColor = TextGray,
@@ -437,7 +540,7 @@ private fun FinTrackBottomBar(onNavigateToExchange: () -> Unit) {
         )
         NavigationBarItem(
             selected = false,
-            onClick = { },
+            onClick = onNavigateToHistory,
             icon = { Icon(Icons.Default.Receipt, contentDescription = "Transactions") },
             label = { Text("Transactions", style = MaterialTheme.typography.labelSmall) },
             colors = NavigationBarItemDefaults.colors(

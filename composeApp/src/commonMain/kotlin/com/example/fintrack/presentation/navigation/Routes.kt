@@ -17,4 +17,7 @@ sealed class Screen {
 
     @Serializable
     object Exchange : Screen()
+
+    @Serializable
+    object History : Screen()
 }

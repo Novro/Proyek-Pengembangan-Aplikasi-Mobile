@@ -2,23 +2,21 @@ package com.example.fintrack.core.di
 
 import com.example.fintrack.core.network.HttpClientFactory
 import com.example.fintrack.core.util.DatabaseDriverFactory
-import com.example.fintrack.data.local.NoteDatabase
+import com.example.fintrack.data.local.FinTrackDatabase
 import com.example.fintrack.data.local.datastore.DataStoreFactory
 import com.example.fintrack.data.local.datastore.UserPreferences
 import com.example.fintrack.data.local.datastore.create
 import com.example.fintrack.data.remote.api.GeminiService
 import com.example.fintrack.data.repository.AIRepositoryImpl
-import com.example.fintrack.data.repository.NoteRepositoryImpl
+import com.example.fintrack.data.repository.TransactionRepositoryImpl
 import com.example.fintrack.domain.repository.AIRepository
-import com.example.fintrack.domain.repository.NoteRepository
-import com.example.fintrack.domain.usecase.DeleteNoteUseCase
-import com.example.fintrack.domain.usecase.GenerateIdeasUseCase
-import com.example.fintrack.domain.usecase.GetAllNotesUseCase
-import com.example.fintrack.domain.usecase.ImproveWritingUseCase
-import com.example.fintrack.domain.usecase.SaveNoteUseCase
-import com.example.fintrack.domain.usecase.SearchNotesUseCase
-import com.example.fintrack.domain.usecase.SummarizeNoteUseCase
+import com.example.fintrack.domain.repository.TransactionRepository
+import com.example.fintrack.presentation.screens.add_edit.AddEditViewModel
+import com.example.fintrack.presentation.screens.home.HomeViewModel
+import com.example.fintrack.presentation.screens.history.HistoryViewModel
+import com.example.fintrack.presentation.screens.detail.DetailViewModel
 import org.koin.core.context.startKoin
+import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.KoinAppDeclaration
@@ -37,7 +35,7 @@ val networkModule = module {
 val databaseModule = module {
     single {
         val driverFactory: DatabaseDriverFactory = get()
-        NoteDatabase(driverFactory.createDriver())
+        FinTrackDatabase(driverFactory.createDriver())
     }
 }
 
@@ -51,26 +49,23 @@ val preferencesModule = module {
 // ==================== REPOSITORY MODULE ====================
 
 val repositoryModule = module {
-    singleOf(::NoteRepositoryImpl) bind NoteRepository::class
+    singleOf(::TransactionRepositoryImpl) bind TransactionRepository::class
     singleOf(::AIRepositoryImpl) bind AIRepository::class
 }
 
 // ==================== USE CASE MODULE ====================
 
 val useCaseModule = module {
-    singleOf(::GetAllNotesUseCase)
-    singleOf(::SearchNotesUseCase)
-    singleOf(::SaveNoteUseCase)
-    singleOf(::DeleteNoteUseCase)
-    singleOf(::SummarizeNoteUseCase)
-    singleOf(::ImproveWritingUseCase)
-    singleOf(::GenerateIdeasUseCase)
+    // Transaction use cases will go here if needed, or viewmodels can use repository directly
 }
 
 // ==================== VIEWMODEL MODULE ====================
 
 val viewModelModule = module {
-    // ViewModels will be registered here when created
+    viewModelOf(::HomeViewModel)
+    viewModelOf(::AddEditViewModel)
+    viewModelOf(::HistoryViewModel)
+    viewModelOf(::DetailViewModel)
 }
 
 // ==================== SHARED MODULES ====================
