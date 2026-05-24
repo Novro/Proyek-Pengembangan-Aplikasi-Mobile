@@ -1,0 +1,46 @@
+-- Transaction table schema for SQLDelight
+-- File: Transaction.sq
+
+CREATE TABLE TransactionEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    amount REAL NOT NULL,
+    type TEXT NOT NULL, -- 'INCOME' or 'EXPENSE'
+    category TEXT NOT NULL,
+    date INTEGER NOT NULL, -- Unix timestamp in milliseconds
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'USD'
+);
+
+getAllTransactions:
+SELECT * FROM TransactionEntity
+ORDER BY date DESC;
+
+getRecentTransactions:
+SELECT * FROM TransactionEntity
+ORDER BY date DESC
+LIMIT :limit;
+
+getTransactionById:
+SELECT * FROM TransactionEntity
+WHERE id = ?;
+
+insertTransaction:
+INSERT INTO TransactionEntity (title, amount, type, category, date, created_at, updated_at, currency)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+lastInsertId:
+SELECT last_insert_rowid();
+
+updateTransaction:
+UPDATE TransactionEntity
+SET title = ?, amount = ?, type = ?, category = ?, date = ?, updated_at = ?, currency = ?
+WHERE id = ?;
+
+deleteTransactionById:
+DELETE FROM TransactionEntity
+WHERE id = ?;
+
+getTotalBalance:
+SELECT SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END) FROM TransactionEntity;
