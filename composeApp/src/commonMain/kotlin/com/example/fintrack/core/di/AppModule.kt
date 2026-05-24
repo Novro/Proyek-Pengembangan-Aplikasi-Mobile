@@ -15,6 +15,7 @@ import com.example.fintrack.presentation.screens.add_edit.AddEditViewModel
 import com.example.fintrack.presentation.screens.home.HomeViewModel
 import com.example.fintrack.presentation.screens.history.HistoryViewModel
 import com.example.fintrack.presentation.screens.detail.DetailViewModel
+import com.example.fintrack.presentation.screens.settings.SettingsViewModel
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.module.Module
@@ -24,6 +25,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 
 // ==================== NETWORK MODULE ====================
+
 
 val networkModule = module {
     single { HttpClientFactory.create(enableLogging = true) }
@@ -66,6 +68,7 @@ val viewModelModule = module {
     viewModelOf(::AddEditViewModel)
     viewModelOf(::HistoryViewModel)
     viewModelOf(::DetailViewModel)
+    viewModelOf(::SettingsViewModel)
 }
 
 // ==================== SHARED MODULES ====================

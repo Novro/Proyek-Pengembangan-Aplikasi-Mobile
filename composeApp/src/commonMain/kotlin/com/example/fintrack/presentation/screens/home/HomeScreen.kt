@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Description
@@ -62,6 +63,7 @@ fun HomeScreen(
     onNavigateToAdd: () -> Unit,
     onNavigateToExchange: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: HomeViewModel = koinViewModel()
 ) {
     val recentTransactions by viewModel.recentTransactions.collectAsState()
@@ -70,7 +72,7 @@ fun HomeScreen(
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
-        topBar = { FinTrackTopBar() },
+        topBar = { FinTrackTopBar(onSettingsClick = onNavigateToSettings) },
         bottomBar = {
             FinTrackBottomBar(
                 onNavigateToExchange = onNavigateToExchange,
@@ -116,8 +118,17 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FinTrackTopBar() {
+private fun FinTrackTopBar(onSettingsClick: () -> Unit) {
     TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = TextWhite
+                )
+            }
+        },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(

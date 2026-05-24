@@ -20,4 +20,7 @@ sealed class Screen {
 
     @Serializable
     object History : Screen()
+
+    @Serializable
+    object Settings : Screen()
 }
