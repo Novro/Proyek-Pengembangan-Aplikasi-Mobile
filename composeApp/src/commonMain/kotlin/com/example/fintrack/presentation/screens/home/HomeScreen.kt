@@ -3,10 +3,10 @@ package com.example.fintrack.presentation.screens.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CurrencyExchange
@@ -36,22 +36,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import kotlin.math.roundToLong
 
-// Helper for formatting currencies
-private fun formatAmount(amount: Double, currency: String): String {
+// Helpers for formatting currencies
+private fun formatUsd(amount: Double): String {
     val isNegative = amount < 0
     val absAmount = if (isNegative) -amount else amount
-    val formatted = if (currency == "USD") {
-        val rounded = (absAmount * 100).roundToLong() / 100.0
-        val str = rounded.toString()
-        val parts = str.split(".")
-        val whole = parts[0]
-        val decimal = if (parts.size > 1) parts[1].padEnd(2, '0').take(2) else "00"
-        "$$whole.$decimal"
-    } else {
-        val rounded = absAmount.roundToLong()
-        "Rp $rounded"
-    }
+    val rounded = (absAmount * 100).roundToLong() / 100.0
+    val str = rounded.toString()
+    val parts = str.split(".")
+    val whole = parts[0]
+    val decimal = if (parts.size > 1) parts[1].padEnd(2, '0').take(2) else "00"
+    val formattedWhole = whole.reversed().chunked(3).joinToString(",").reversed()
+    val formatted = "$$formattedWhole.$decimal"
     return if (isNegative) "-$formatted" else formatted
+}
+
+private fun formatIdr(amount: Double): String {
+    val isNegative = amount < 0
+    val absAmount = if (isNegative) -amount else amount
+    val rounded = absAmount.roundToLong()
+    val formattedWhole = rounded.toString().reversed().chunked(3).joinToString(",").reversed()
+    val formatted = "Rp $formattedWhole"
+    return if (isNegative) "-$formatted" else formatted
+}
+
+private fun formatAmount(amount: Double, currency: String): String {
+    return if (currency == "USD") formatUsd(amount) else formatIdr(amount)
 }
 
 // ==================== HOME SCREEN ====================
@@ -68,7 +77,12 @@ fun HomeScreen(
 ) {
     val recentTransactions by viewModel.recentTransactions.collectAsState()
     val totalBalance by viewModel.totalBalance.collectAsState()
-    val displayCurrency by viewModel.displayCurrency.collectAsState()
+    val monthlyIncome by viewModel.monthlyIncome.collectAsState()
+    val monthlyExpense by viewModel.monthlyExpense.collectAsState()
+    val totalBalanceIdr by viewModel.totalBalanceIdr.collectAsState()
+    val monthlyIncomeIdr by viewModel.monthlyIncomeIdr.collectAsState()
+    val monthlyExpenseIdr by viewModel.monthlyExpenseIdr.collectAsState()
+    val lastIdrRate by viewModel.lastIdrRate.collectAsState()
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -90,26 +104,48 @@ fun HomeScreen(
             }
         }
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            BalanceCard(
-                balance = totalBalance,
-                currency = displayCurrency,
-                onToggleCurrency = { viewModel.toggleDisplayCurrency() }
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            MonthlyOverviewRow()
-            Spacer(modifier = Modifier.height(24.dp))
-            RecentTransactionsSection(
-                transactions = recentTransactions,
-                onNavigateToDetail = onNavigateToDetail,
-                onNavigateToAdd = onNavigateToAdd,
-                onViewAllClick = onNavigateToHistory
-            )
+            item {
+                BalanceCard(
+                    balanceUsd = totalBalance,
+                    balanceIdr = totalBalanceIdr
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                MonthlyOverviewRow(
+                    monthlyIncomeUsd = monthlyIncome,
+                    monthlyExpenseUsd = monthlyExpense,
+                    monthlyIncomeIdr = monthlyIncomeIdr,
+                    monthlyExpenseIdr = monthlyExpenseIdr
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                RecentTransactionsHeader(
+                    onViewAllClick = onNavigateToHistory
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (recentTransactions.isEmpty()) {
+                    Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        EmptyTransactionsState(onAddClick = onNavigateToAdd)
+                    }
+                }
+            }
+
+            if (recentTransactions.isNotEmpty()) {
+                items(recentTransactions, key = { it.id }) { transaction ->
+                    Box(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)) {
+                        TransactionItem(
+                            transaction = transaction,
+                            idrRate = lastIdrRate,
+                            onClick = { onNavigateToDetail(transaction.id) }
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -172,9 +208,8 @@ private fun FinTrackTopBar(onSettingsClick: () -> Unit) {
 
 @Composable
 private fun BalanceCard(
-    balance: Double = 0.0,
-    currency: String = "USD",
-    onToggleCurrency: () -> Unit = {}
+    balanceUsd: Double = 0.0,
+    balanceIdr: Double = 0.0
 ) {
     Card(
         modifier = Modifier
@@ -195,78 +230,29 @@ private fun BalanceCard(
                 .padding(24.dp)
         ) {
             Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "TOTAL BALANCE",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.7f),
-                        letterSpacing = 1.5.sp
-                    )
-                    // Toggle currency pill
-                    Surface(
-                        modifier = Modifier.clickable { onToggleCurrency() },
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color.White.copy(alpha = 0.2f)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = if (currency == "USD") "USD ⇆ IDR" else "IDR ⇆ USD",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
+                Text(
+                    "TOTAL BALANCE",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.7f),
+                    letterSpacing = 1.5.sp
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val formatted = remember(balance, currency) {
-                        formatAmount(balance, currency)
-                    }
-                    Text(
-                        formatted,
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = formatUsd(balanceUsd),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(
-                        onClick = { },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = FinTrackGreen,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-                    ) {
-                        Text("▶  Send", style = MaterialTheme.typography.labelLarge)
-                    }
-                    OutlinedButton(
-                        onClick = { },
-                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                            brush = Brush.linearGradient(listOf(Color.White.copy(alpha = 0.4f), Color.White.copy(alpha = 0.4f)))
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-                    ) {
-                        Text(
-                            "⊹  Request",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Color.White
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "≈ ${formatIdr(balanceIdr)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }
@@ -275,7 +261,12 @@ private fun BalanceCard(
 // ==================== MONTHLY OVERVIEW ====================
 
 @Composable
-private fun MonthlyOverviewRow() {
+private fun MonthlyOverviewRow(
+    monthlyIncomeUsd: Double,
+    monthlyExpenseUsd: Double,
+    monthlyIncomeIdr: Double,
+    monthlyExpenseIdr: Double
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -285,14 +276,16 @@ private fun MonthlyOverviewRow() {
         MonthlyCard(
             modifier = Modifier.weight(1f),
             label = "Monthly Income",
-            amount = "$3,400.00",
+            amountUsd = monthlyIncomeUsd,
+            amountIdr = monthlyIncomeIdr,
             iconColor = FinTrackGreen,
             isIncome = true
         )
         MonthlyCard(
             modifier = Modifier.weight(1f),
             label = "Monthly Expenses",
-            amount = "$2,150.00",
+            amountUsd = monthlyExpenseUsd,
+            amountIdr = monthlyExpenseIdr,
             iconColor = ErrorRed,
             isIncome = false
         )
@@ -303,7 +296,8 @@ private fun MonthlyOverviewRow() {
 private fun MonthlyCard(
     modifier: Modifier = Modifier,
     label: String,
-    amount: String,
+    amountUsd: Double,
+    amountIdr: Double,
     iconColor: Color,
     isIncome: Boolean
 ) {
@@ -337,10 +331,17 @@ private fun MonthlyCard(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                amount,
+                text = formatUsd(amountUsd),
                 style = MaterialTheme.typography.titleMedium,
                 color = TextWhite,
                 fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = "≈ ${formatIdr(amountIdr)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextGray,
+                fontWeight = FontWeight.Normal
             )
         }
     }
@@ -349,47 +350,37 @@ private fun MonthlyCard(
 // ==================== RECENT TRANSACTIONS ====================
 
 @Composable
-private fun RecentTransactionsSection(
-    transactions: List<Transaction>,
-    onNavigateToDetail: (Long) -> Unit,
-    onNavigateToAdd: () -> Unit,
+private fun RecentTransactionsHeader(
     onViewAllClick: () -> Unit = {}
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Recent Transactions",
-                style = MaterialTheme.typography.titleMedium,
-                color = TextWhite,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                "View All >",
-                style = MaterialTheme.typography.labelMedium,
-                color = FinTrackGreen,
-                modifier = Modifier.clickable { onViewAllClick() }
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (transactions.isEmpty()) {
-            // Empty state
-            EmptyTransactionsState(onAddClick = onNavigateToAdd)
-        } else {
-            transactions.forEach { transaction ->
-                TransactionItem(transaction = transaction, onClick = { onNavigateToDetail(transaction.id) })
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            "Recent Transactions",
+            style = MaterialTheme.typography.titleMedium,
+            color = TextWhite,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            "View All >",
+            style = MaterialTheme.typography.labelMedium,
+            color = FinTrackGreen,
+            modifier = Modifier.clickable { onViewAllClick() }
+        )
     }
 }
 
 @Composable
-private fun TransactionItem(transaction: Transaction, onClick: () -> Unit) {
+private fun TransactionItem(
+    transaction: Transaction,
+    idrRate: Double,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -427,15 +418,21 @@ private fun TransactionItem(transaction: Transaction, onClick: () -> Unit) {
             )
         }
         val prefix = if (transaction.type == TransactionType.INCOME) "+" else "-"
-        val formattedAmount = remember(transaction.amount, transaction.currency) {
-            formatAmount(transaction.amount, transaction.currency)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                "$prefix${formatUsd(transaction.amount)}",
+                style = MaterialTheme.typography.titleMedium,
+                color = if (transaction.type == TransactionType.INCOME) FinTrackGreen else TextWhite,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                "≈ ${formatIdr(transaction.amount * idrRate)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = TextGray,
+                fontWeight = FontWeight.Normal
+            )
         }
-        Text(
-            "$prefix$formattedAmount",
-            style = MaterialTheme.typography.titleMedium,
-            color = if (transaction.type == TransactionType.INCOME) FinTrackGreen else TextWhite,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
