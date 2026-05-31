@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.fintrack.presentation.theme.*
+import com.example.fintrack.core.util.CurrencyFormatter
 import org.koin.compose.viewmodel.koinViewModel
 
 // ==================== EXCHANGE SCREEN ====================
@@ -260,7 +261,7 @@ private fun ConverterCard(
     onAmountChanged: (String) -> Unit,
     onTargetSelected: (String) -> Unit,
     onSwap: () -> Unit,
-    convertedAmount: () -> String
+    convertedAmount: () -> Double?
 ) {
     val targetRate = (uiState as? ExchangeUiState.Success)
         ?.rates?.find { it.currencyCode == targetCurrency }?.rate
@@ -347,7 +348,7 @@ private fun ConverterCard(
 
             if (targetRate != null) {
                 Text(
-                    "${targetCurrency} ${convertedAmount()}",
+                    CurrencyFormatter.formatCurrency(convertedAmount() ?: 0.0, targetCurrency),
                     style = MaterialTheme.typography.headlineLarge,
                     color = FinTrackGreen,
                     fontWeight = FontWeight.Bold
@@ -682,11 +683,7 @@ private fun RateItem(
     }
 
     val convertedValue = inputAmount * item.rate
-    val formattedConverted = when {
-        convertedValue >= 1_000 -> convertedValue.toLong().toString()
-            .reversed().chunked(3).joinToString(",").reversed()
-        else -> String.format("%.2f", convertedValue)
-    }
+    val formattedConverted = CurrencyFormatter.formatCurrency(convertedValue, item.currencyCode)
 
     Card(
         modifier = Modifier.fillMaxWidth(),

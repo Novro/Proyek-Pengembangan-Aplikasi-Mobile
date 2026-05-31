@@ -34,28 +34,7 @@ import com.example.fintrack.presentation.theme.*
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToLong
 
-// Helpers for formatting currencies
-private fun formatUsd(amount: Double): String {
-    val isNegative = amount < 0
-    val absAmount = if (isNegative) -amount else amount
-    val rounded = (absAmount * 100).roundToLong() / 100.0
-    val str = rounded.toString()
-    val parts = str.split(".")
-    val whole = parts[0]
-    val decimal = if (parts.size > 1) parts[1].padEnd(2, '0').take(2) else "00"
-    val formattedWhole = whole.reversed().chunked(3).joinToString(",").reversed()
-    val formatted = "$$formattedWhole.$decimal"
-    return if (isNegative) "-$formatted" else formatted
-}
-
-private fun formatIdr(amount: Double): String {
-    val isNegative = amount < 0
-    val absAmount = if (isNegative) -amount else amount
-    val rounded = absAmount.roundToLong()
-    val formattedWhole = rounded.toString().reversed().chunked(3).joinToString(",").reversed()
-    val formatted = "Rp $formattedWhole"
-    return if (isNegative) "-$formatted" else formatted
-}
+import com.example.fintrack.core.util.CurrencyFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -330,14 +309,14 @@ private fun TransactionItem(
         val prefix = if (transaction.type == TransactionType.INCOME) "+" else "-"
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                "$prefix${formatUsd(transaction.amount)}",
+                "$prefix${CurrencyFormatter.formatCurrency(transaction.amount, "USD").removePrefix("$")}",
                 style = MaterialTheme.typography.titleMedium,
                 color = if (transaction.type == TransactionType.INCOME) FinTrackGreen else TextWhite,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                "≈ ${formatIdr(transaction.amount * idrRate)}",
+                "≈ ${CurrencyFormatter.formatCurrency(transaction.amount * idrRate, "IDR")}",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextGray,
                 fontWeight = FontWeight.Normal

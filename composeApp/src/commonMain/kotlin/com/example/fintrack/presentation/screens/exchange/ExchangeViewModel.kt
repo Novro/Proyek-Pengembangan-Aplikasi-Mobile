@@ -207,19 +207,10 @@ class ExchangeViewModel(
         fetchRates()
     }
 
-    fun convertedAmount(): String {
-        val rates = (_uiState.value as? ExchangeUiState.Success)?.rates ?: return "—"
-        val rate = rates.find { it.currencyCode == _targetCurrency.value }?.rate ?: return "—"
+    fun convertedAmount(): Double? {
+        val rates = (_uiState.value as? ExchangeUiState.Success)?.rates ?: return null
+        val rate = rates.find { it.currencyCode == _targetCurrency.value }?.rate ?: return null
         val amount = _inputAmount.value.toDoubleOrNull() ?: 1.0
-        val result = amount * rate
-        return if (result >= 1_000) {
-            result.toLong().toString()
-                .reversed()
-                .chunked(3)
-                .joinToString(",")
-                .reversed()
-        } else {
-            String.format("%.4f", result)
-        }
+        return amount * rate
     }
 }
