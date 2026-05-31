@@ -24,10 +24,8 @@ Dalam era digital, fluktuasi nilai mata uang dan aset digital terjadi sangat cep
 
 Berikut adalah rekaman demonstrasi jalannya aplikasi FinTrack:
 
-<video width="100%" controls>
-  <source src="videoRun.mp4" type="video/mp4">
-  Browser Anda tidak mendukung HTML5 video. Silakan unduh langsung file [videoRun.mp4](./videoRun.mp4) untuk menontonnya.
-</video>
+![Demo Aplikasi](videoRun.gif)
+
 ---
 
 ## ✨ Fitur Aplikasi
