@@ -20,6 +20,13 @@ Dalam era digital, fluktuasi nilai mata uang dan aset digital terjadi sangat cep
 
 ---
 
+## 🎥 Demo Aplikasi
+
+Berikut adalah rekaman demonstrasi jalannya aplikasi FinTrack:
+
+<video src="videoRun.mp4" width="100%" controls></video>
+---
+
 ## ✨ Fitur Aplikasi
 
 ### Fitur Minimum (Wajib)
