@@ -10,8 +10,8 @@ Proyek ini dibuat untuk memenuhi Tugas Besar mata kuliah **Pengembangan Aplikasi
 ## 👥 Tim Kelompok & Peran
 | Nama | NIM | GitHub Username | Role |
 | --- | --- | --- | --- |
-| Ivan Nandira Mangunang | 123140094 | @V4nzz | Fullstack Developer |
-| Ahmad Aufamahdi Salam | 123140092 | @Novro | Fullstack Developer |
+| Ivan Nandira Mangunang 	| 123140094 | @V4nzz | Fullstack Developer |
+| Ahmad Aufamahdi Salam 	| 123140092 | @Novro | Fullstack Developer |
 
 ---
 
