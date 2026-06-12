@@ -10,13 +10,21 @@ Proyek ini dibuat untuk memenuhi Tugas Besar mata kuliah **Pengembangan Aplikasi
 ## 👥 Tim Kelompok & Peran
 | Nama | NIM | GitHub Username | Role |
 | --- | --- | --- | --- |
-| Ivan Nandira Mangunang | 123140094 | @V4nzz | Fullstack Developer |
-| Ahmad Aufamahdi Salam | 123140092 | @Novro | Fullstack Developer |
+| Ivan Nandira Mangunang 	| 123140094 | @V4nzz | Fullstack Developer |
+| Ahmad Aufamahdi Salam 	| 123140092 | @Novro | Fullstack Developer |
 
 ---
 
 ## 📌 Deskripsi Proyek
 Dalam era digital, fluktuasi nilai mata uang dan aset digital terjadi sangat cepat. **FinTrack** hadir untuk menjembatani kebutuhan pencatatan harian dengan kondisi ekonomi global secara *real-time*. Aplikasi ini fokus pada implementasi arsitektur yang bersih (*Clean Architecture*), pengelolaan *state* yang adaptif, serta integrasi API eksternal dan kecerdasan buatan.
+
+---
+
+## 🎥 Demo Aplikasi
+
+Berikut adalah rekaman demonstrasi jalannya aplikasi FinTrack:
+
+![Demo Aplikasi](videoRun.gif)
 
 ---
 
