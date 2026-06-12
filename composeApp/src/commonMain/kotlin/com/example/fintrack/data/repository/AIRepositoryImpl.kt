@@ -94,14 +94,26 @@ class AIRepositoryImpl(
     }
     
     override suspend fun getFinancialInsight(
+        totalBalance: Double,
+        totalIncome: Double,
         totalExpense: Double,
         budget: Double,
         topCategory: String
     ): Result<String> {
+        val formattedBalance = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(totalBalance, "USD")
+        val formattedIncome = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(totalIncome, "USD")
         val formattedExpense = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(totalExpense, "USD")
         val formattedBudget = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(budget, "USD")
         
-        val promptText = "Bulan ini saya sudah menghabiskan $formattedExpense dari budget $formattedBudget. Pengeluaran terbesar di kategori $topCategory."
+        val promptText = """
+            Kondisi keuangan saya bulan ini:
+            - Saldo uang saat ini: $formattedBalance
+            - Total pemasukan: $formattedIncome
+            - Total pengeluaran: $formattedExpense (dari budget $formattedBudget)
+            - Kategori pengeluaran terbesar: $topCategory
+            
+            Berikan masukan atau saran.
+        """.trimIndent()
         
         return geminiService.generateContent(
             prompt = promptText,

@@ -12,9 +12,10 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 import com.example.fintrack.domain.repository.AIRepository
@@ -126,20 +127,42 @@ class HomeViewModel(
                         val topCat = categoryGroups.maxByOrNull { entry -> entry.value.sumOf { it.amount } }
                         topCat?.key ?: "Lainnya"
                     } else {
-                        "Lainnya"
+                        "Belum ada"
                     }
                     
-                    fetchFinancialInsight(expense, topCategoryName)
+                    fetchFinancialInsight(totalBalance.value, monthlyIncome.value, expense, topCategoryName)
                 }
             }
         }
     }
 
-    private fun fetchFinancialInsight(currentExpense: Double, topCategory: String) {
+    fun refreshInsight() {
+        viewModelScope.launch {
+            val balance = totalBalance.value
+            val income = monthlyIncome.value
+            val expense = monthlyExpense.value
+            
+            val transactions = allTransactions.first()
+            val expenseTransactions = transactions.filter { it.type == TransactionType.EXPENSE }
+            val topCategoryName = if (expenseTransactions.isNotEmpty()) {
+                val categoryGroups = expenseTransactions.groupBy { it.category }
+                val topCat = categoryGroups.maxByOrNull { entry -> entry.value.sumOf { it.amount } }
+                topCat?.key ?: "Lainnya"
+            } else {
+                "Belum ada"
+            }
+            
+            fetchFinancialInsight(balance, income, expense, topCategoryName)
+        }
+    }
+
+    private fun fetchFinancialInsight(balance: Double, income: Double, expense: Double, topCategory: String) {
         viewModelScope.launch {
             _isAiLoading.value = true
             val result = aiRepository.getFinancialInsight(
-                totalExpense = currentExpense,
+                totalBalance = balance,
+                totalIncome = income,
+                totalExpense = expense,
                 budget = 500.0, // Bisa diganti dengan budget dari preferences kalau ada
                 topCategory = topCategory
             )

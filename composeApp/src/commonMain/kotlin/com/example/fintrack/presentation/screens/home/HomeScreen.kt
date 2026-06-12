@@ -101,7 +101,8 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 AiInsightCard(
                     insightText = aiInsightText,
-                    isLoading = isAiLoading
+                    isLoading = isAiLoading,
+                    onClick = { viewModel.refreshInsight() }
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 RecentTransactionsHeader(
@@ -547,12 +548,15 @@ private fun FinTrackBottomBar(
 fun AiInsightCard(
     insightText: String,
     isLoading: Boolean,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF1E293B)
@@ -589,12 +593,23 @@ fun AiInsightCard(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = "Smart Financial Insights",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Smart Financial Insights",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Refresh",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = FinTrackGreen
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = insightText,

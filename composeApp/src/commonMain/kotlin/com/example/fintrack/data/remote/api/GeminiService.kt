@@ -26,7 +26,7 @@ class GeminiService(private val client: HttpClient) {
             throw Exception("API Key belum disetting di local.properties")
         }
 
-        val url = "https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=$apiKey"
+        val url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=$apiKey"
         
         // Buat konten berdasarkan apakah ada system prompt atau tidak
         val parts = mutableListOf<GeminiPart>()
@@ -66,5 +66,5 @@ object SystemPrompts {
     val WRITING_IMPROVER = "writing improver prompt"
     val TITLE_SUGGESTER = "title suggester prompt"
     val TRANSLATOR = "translator prompt"
-    val FINANCIAL_ADVISOR = "Kamu adalah penasihat keuangan pribadi. Berikan komentar singkat, ramah, maksimal 2 kalimat. Jangan pakai markdown."
+    val FINANCIAL_ADVISOR = "Kamu adalah penasihat keuangan pribadi. Berikan komentar super singkat, ramah, dan to the point (maksimal 1 kalimat atau 15 kata). Jangan pakai markdown."
 }
