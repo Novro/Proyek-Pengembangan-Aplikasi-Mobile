@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.kotlinSerialization)
+    id("org.jetbrains.kotlin.plugin.serialization")
     alias(libs.plugins.sqldelight)
 }
 
@@ -51,14 +51,10 @@ kotlin {
             
             // Kotlin
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.serialization.json)
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
             implementation(libs.kotlinx.datetime)
             
-            // Ktor
-            implementation(libs.ktor.client.core)
-            implementation(libs.ktor.client.content.negotiation)
-            implementation(libs.ktor.serialization.json)
-            implementation(libs.ktor.client.logging)
+
             
             // Koin DI
             implementation(libs.koin.core)
@@ -82,7 +78,6 @@ kotlin {
             
             // Coil
             implementation(libs.coil.compose)
-            implementation(libs.coil.network.ktor)
         }
         
         commonTest.dependencies {
@@ -94,12 +89,10 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.koin.android)
-            implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android.driver)
         }
         
         iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
             implementation(libs.sqldelight.native.driver)
         }
     }
@@ -157,3 +150,4 @@ sqldelight {
         }
     }
 }
+
