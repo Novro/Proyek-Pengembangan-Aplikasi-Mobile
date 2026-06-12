@@ -98,12 +98,19 @@ class AIRepositoryImpl(
         totalIncome: Double,
         totalExpense: Double,
         budget: Double,
-        topCategory: String
+        topCategory: String,
+        transactionDetails: String
     ): Result<String> {
         val formattedBalance = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(totalBalance, "USD")
         val formattedIncome = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(totalIncome, "USD")
         val formattedExpense = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(totalExpense, "USD")
         val formattedBudget = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(budget, "USD")
+        
+        val detailsSection = if (transactionDetails.isNotBlank()) {
+            "\nDetail Transaksi:\n$transactionDetails\n"
+        } else {
+            ""
+        }
         
         val promptText = """
             Kondisi keuangan saya bulan ini:
@@ -111,7 +118,7 @@ class AIRepositoryImpl(
             - Total pemasukan: $formattedIncome
             - Total pengeluaran: $formattedExpense (dari budget $formattedBudget)
             - Kategori pengeluaran terbesar: $topCategory
-            
+            $detailsSection
             Berikan masukan atau saran.
         """.trimIndent()
         

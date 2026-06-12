@@ -130,7 +130,7 @@ class HomeViewModel(
                         "Belum ada"
                     }
                     
-                    fetchFinancialInsight(totalBalance.value, monthlyIncome.value, expense, topCategoryName)
+                    fetchFinancialInsight(totalBalance.value, monthlyIncome.value, expense, topCategoryName, transactions)
                 }
             }
         }
@@ -152,19 +152,25 @@ class HomeViewModel(
                 "Belum ada"
             }
             
-            fetchFinancialInsight(balance, income, expense, topCategoryName)
+            fetchFinancialInsight(balance, income, expense, topCategoryName, transactions)
         }
     }
 
-    private fun fetchFinancialInsight(balance: Double, income: Double, expense: Double, topCategory: String) {
+    private fun fetchFinancialInsight(balance: Double, income: Double, expense: Double, topCategory: String, transactions: List<Transaction> = emptyList()) {
         viewModelScope.launch {
             _isAiLoading.value = true
+            
+            val txDetails = transactions.take(20).joinToString("\n") { 
+                "- ${it.title} (${it.type.name}): ${com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(it.amount, "USD")}"
+            }
+            
             val result = aiRepository.getFinancialInsight(
                 totalBalance = balance,
                 totalIncome = income,
                 totalExpense = expense,
                 budget = 500.0, // Bisa diganti dengan budget dari preferences kalau ada
-                topCategory = topCategory
+                topCategory = topCategory,
+                transactionDetails = txDetails
             )
             
             result.onSuccess { advice ->

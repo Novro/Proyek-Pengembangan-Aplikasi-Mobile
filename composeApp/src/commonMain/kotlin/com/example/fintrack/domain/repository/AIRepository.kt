@@ -12,7 +12,8 @@ interface AIRepository {
         totalIncome: Double,
         totalExpense: Double,
         budget: Double,
-        topCategory: String
+        topCategory: String,
+        transactionDetails: String = ""
     ): Result<String>
 }
 

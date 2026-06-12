@@ -42,7 +42,8 @@ class HomeViewModelTest {
                 totalIncome: Double,
                 totalExpense: Double,
                 budget: Double,
-                topCategory: String
+                topCategory: String,
+                transactionDetails: String
             ): Result<String> = Result.success("")
         }
         viewModel = HomeViewModel(repository, dummyAiRepository)
