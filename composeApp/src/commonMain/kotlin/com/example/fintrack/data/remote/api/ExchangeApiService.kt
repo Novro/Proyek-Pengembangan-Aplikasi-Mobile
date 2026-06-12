@@ -2,12 +2,11 @@ package com.example.fintrack.data.remote.api
 
 import com.example.fintrack.core.network.safeApiCall
 import com.example.fintrack.core.network.NetworkResult
-import com.example.fintrack.core.network.HttpClient
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import java.net.HttpURLConnection
-import java.net.URL
 
 @Serializable
 data class FrankfurterResponse(
@@ -29,10 +28,8 @@ class ExchangeApiService(private val client: HttpClient) {
     ): NetworkResult<FrankfurterResponse> = safeApiCall {
         val targetCurrencies = ALL_CURRENCIES.filter { it != baseCurrency }.joinToString(",")
         val urlString = "$BASE_URL/latest?from=$baseCurrency&to=$targetCurrencies"
-        val url = URL(urlString)
-        val connection = url.openConnection() as HttpURLConnection
-        connection.requestMethod = "GET"
-        val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-        Json { ignoreUnknownKeys = true }.decodeFromString<FrankfurterResponse>(responseText)
+        
+        val response = client.get(urlString)
+        response.body<FrankfurterResponse>()
     }
 }

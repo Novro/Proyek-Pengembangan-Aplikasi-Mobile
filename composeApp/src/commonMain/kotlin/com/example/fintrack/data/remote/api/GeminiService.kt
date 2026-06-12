@@ -1,13 +1,62 @@
 package com.example.fintrack.data.remote.api
 
-import com.example.fintrack.core.network.HttpClient
+import com.example.fintrack.core.network.ApiConfig
+import com.example.fintrack.data.remote.dto.GeminiContent
+import com.example.fintrack.data.remote.dto.GeminiPart
+import com.example.fintrack.data.remote.dto.GeminiRequest
+import com.example.fintrack.data.remote.dto.GeminiResponse
+import com.example.fintrack.data.remote.dto.getErrorMessage
+import com.example.fintrack.data.remote.dto.getTextContent
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.HttpResponse
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 
 class GeminiService(private val client: HttpClient) {
     suspend fun generateContent(
         prompt: String,
         systemPrompt: String? = null
     ): Result<String> = runCatching {
-        "Mock content generation response"
+        val apiKey = ApiConfig.geminiApiKey
+        if (apiKey.isBlank()) {
+            throw Exception("API Key belum disetting di local.properties")
+        }
+
+        val url = "https://generativelanguage.googleapis.com/v1/models/gemini-3.5-flash:generateContent?key=$apiKey"
+        
+        // Buat konten berdasarkan apakah ada system prompt atau tidak
+        val parts = mutableListOf<GeminiPart>()
+        if (systemPrompt != null) {
+            parts.add(GeminiPart(text = "System: $systemPrompt"))
+        }
+        parts.add(GeminiPart(text = prompt))
+        
+        val requestBody = GeminiRequest(
+            contents = listOf(GeminiContent(parts = parts))
+        )
+
+        val response: HttpResponse = client.post(url) {
+            contentType(ContentType.Application.Json)
+            setBody(requestBody)
+        }
+
+        val responseData: GeminiResponse = response.body()
+
+        if (response.status.isSuccess()) {
+            val text = responseData.getTextContent()
+            if (text != null) {
+                text
+            } else {
+                throw Exception("Response kosong dari Gemini")
+            }
+        } else {
+            val errorMsg = responseData.getErrorMessage() ?: "Terjadi kesalahan pada server"
+            throw Exception(errorMsg)
+        }
     }
 }
 
@@ -17,4 +66,5 @@ object SystemPrompts {
     val WRITING_IMPROVER = "writing improver prompt"
     val TITLE_SUGGESTER = "title suggester prompt"
     val TRANSLATOR = "translator prompt"
+    val FINANCIAL_ADVISOR = "Kamu adalah penasihat keuangan pribadi. Berikan komentar singkat, ramah, maksimal 2 kalimat. Jangan pakai markdown."
 }

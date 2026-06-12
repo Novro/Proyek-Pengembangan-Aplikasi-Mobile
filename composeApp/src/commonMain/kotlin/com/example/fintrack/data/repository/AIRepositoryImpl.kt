@@ -1,4 +1,4 @@
-﻿package com.example.fintrack.data.repository
+package com.example.fintrack.data.repository
 
 import com.example.fintrack.data.remote.api.GeminiService
 import com.example.fintrack.data.remote.api.SystemPrompts
@@ -91,5 +91,21 @@ class AIRepositoryImpl(
             prompt = prompt,
             systemPrompt = SystemPrompts.TITLE_SUGGESTER
         ).map { it.trim().removeSurrounding("\"") }
+    }
+    
+    override suspend fun getFinancialInsight(
+        totalExpense: Double,
+        budget: Double,
+        topCategory: String
+    ): Result<String> {
+        val formattedExpense = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(totalExpense, "USD")
+        val formattedBudget = com.example.fintrack.core.util.CurrencyFormatter.formatCurrency(budget, "USD")
+        
+        val promptText = "Bulan ini saya sudah menghabiskan $formattedExpense dari budget $formattedBudget. Pengeluaran terbesar di kategori $topCategory."
+        
+        return geminiService.generateContent(
+            prompt = promptText,
+            systemPrompt = SystemPrompts.FINANCIAL_ADVISOR
+        )
     }
 }

@@ -3,7 +3,7 @@ package com.example.fintrack.presentation.screens.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.fintrack.data.local.datastore.UserPreferences
-import com.example.fintrack.data.remote.api.GeminiApiService
+
 import com.example.fintrack.domain.model.Transaction
 import com.example.fintrack.domain.repository.TransactionRepository
 import com.example.fintrack.domain.model.TransactionType
@@ -17,8 +17,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import com.example.fintrack.domain.repository.AIRepository
+
 class HomeViewModel(
-    repository: TransactionRepository,
+    private val repository: TransactionRepository,
+    private val aiRepository: AIRepository,
     userPreferences: UserPreferences? = null
 ) : ViewModel() {
 
@@ -101,8 +104,6 @@ class HomeViewModel(
         initialValue = 0.0
     )
 
-    private val geminiService = GeminiApiService()
-
     private val _aiInsightText = MutableStateFlow("Menganalisis pola pengeluaranmu...")
     val aiInsightText: StateFlow<String> = _aiInsightText.asStateFlow()
 
@@ -113,24 +114,41 @@ class HomeViewModel(
 
     init {
         viewModelScope.launch {
-            monthlyExpense.collect { expense ->
-                if (expense > 0.0 && !hasFetchedInsight) {
+            combine(monthlyExpense, allTransactions) { expense, transactions ->
+                Pair(expense, transactions)
+            }.collect { (expense, transactions) ->
+                if (expense > 0.0 && !hasFetchedInsight && transactions.isNotEmpty()) {
                     hasFetchedInsight = true
-                    fetchFinancialInsight(expense)
+                    
+                    val expenseTransactions = transactions.filter { it.type == TransactionType.EXPENSE }
+                    val topCategoryName = if (expenseTransactions.isNotEmpty()) {
+                        val categoryGroups = expenseTransactions.groupBy { it.category }
+                        val topCat = categoryGroups.maxByOrNull { entry -> entry.value.sumOf { it.amount } }
+                        topCat?.key ?: "Lainnya"
+                    } else {
+                        "Lainnya"
+                    }
+                    
+                    fetchFinancialInsight(expense, topCategoryName)
                 }
             }
         }
     }
 
-    fun fetchFinancialInsight(currentExpense: Double) {
+    private fun fetchFinancialInsight(currentExpense: Double, topCategory: String) {
         viewModelScope.launch {
             _isAiLoading.value = true
-            val advice = geminiService.getFinancialAdvice(
+            val result = aiRepository.getFinancialInsight(
                 totalExpense = currentExpense,
-                budget = 500.0,
-                topCategory = "Makanan"
+                budget = 500.0, // Bisa diganti dengan budget dari preferences kalau ada
+                topCategory = topCategory
             )
-            _aiInsightText.value = advice
+            
+            result.onSuccess { advice ->
+                _aiInsightText.value = advice
+            }.onFailure { error ->
+                _aiInsightText.value = "Gagal memuat insight: ${error.message}"
+            }
             _isAiLoading.value = false
         }
     }
