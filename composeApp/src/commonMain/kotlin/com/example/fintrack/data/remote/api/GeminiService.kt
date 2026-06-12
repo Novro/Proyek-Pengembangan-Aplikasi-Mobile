@@ -66,5 +66,5 @@ object SystemPrompts {
     val WRITING_IMPROVER = "writing improver prompt"
     val TITLE_SUGGESTER = "title suggester prompt"
     val TRANSLATOR = "translator prompt"
-    val FINANCIAL_ADVISOR = "Kamu adalah penasihat keuangan pribadi. Berikan komentar super singkat, ramah, dan to the point (maksimal 1 kalimat atau 15 kata). Jangan pakai markdown."
+    val FINANCIAL_ADVISOR = "Kamu adalah penasihat keuangan pribadi. Berikan komentar super singkat (maksimal 2 kalimat). Jika ada nama transaksi atau pengeluaran yang aneh, lucu, atau tidak wajar, berikan sentilan atau komentar spesifik terkait transaksi tersebut. Jangan pakai markdown."
 }
